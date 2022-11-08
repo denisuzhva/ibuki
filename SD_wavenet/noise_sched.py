@@ -24,14 +24,19 @@ def forward_diffusion_sample(x_0, t,
     Takes a sample and a timestep as input and 
     returns the noisy version of it
     """
-    noise = torch.randn_like(x_0)
-    sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
-    sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
-    sqrt_alphas_cumprod_t = get_index_from_list(sqrt_alphas_cumprod, t, x_0.shape)
-    sqrt_one_minus_alphas_cumprod_t = get_index_from_list(
-        sqrt_one_minus_alphas_cumprod, t, x_0.shape
+    #noise = torch.randn_like(x_0)
+    noise = torch.rand_like(x_0) * 2 - 1
+    #sqrt_alphas_cumprod = torch.sqrt(alphas_cumprod)
+    #sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
+    #sqrt_alphas_cumprod_t = get_index_from_list(sqrt_alphas_cumprod, t, x_0.shape)
+    #sqrt_one_minus_alphas_cumprod_t = get_index_from_list(
+    #    sqrt_one_minus_alphas_cumprod, t, x_0.shape
+    #)
+    alphas_cumprod_t = get_index_from_list(alphas_cumprod, t, x_0.shape)
+    one_minus_alphas_cumprod_t = get_index_from_list(
+        1. - alphas_cumprod, t, x_0.shape
     )
     # mean + variance
-    return sqrt_alphas_cumprod_t.to(device) * x_0.to(device) \
-    + sqrt_one_minus_alphas_cumprod_t.to(device) * noise.to(device), noise.to(device)
+    return alphas_cumprod_t.to(device) * x_0.to(device) \
+    + one_minus_alphas_cumprod_t.to(device) * noise.to(device), noise.to(device)
 
