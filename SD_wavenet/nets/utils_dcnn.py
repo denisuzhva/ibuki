@@ -1,12 +1,27 @@
 # utils_dcnn.py
 
 import torchvision
+from torch import nn
 
+
+
+def activation_func(activation):
+    return nn.ModuleDict([
+        ['relu', nn.ReLU(inplace=True)],
+        ['leaky_relu', nn.LeakyReLU(negative_slope=0.1, inplace=True)],
+        ['selu', nn.SELU(inplace=True)],
+        ['selu', nn.SELU(inplace=True)],
+        ['sigmoid', nn.Sigmoid()],
+        ['tanh', nn.Tanh()],
+        ['tanhshrink', nn.Tanhshrink()],
+        ['none', nn.Identity()]
+    ])[activation]
 
 
 def calc_conv1d_shape(l_in, kernel_size, stride=1, padding=0, dilation=1):
     l_out = (l_in + 2 * padding - dilation * (kernel_size - 1) - 1) / stride + 1
     return l_out
+
 
 def calc_conv2d_shape(hw_in, kernel_size, stride=1, padding=0, dilation=1):
     if not isinstance(kernel_size, tuple):

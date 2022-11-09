@@ -12,16 +12,20 @@ class SimpleWavHandler(Dataset):
                  mono=True,
                  sample_size=1024,
                  unfolding_step=512,
+                 use_part=1.0,
                  device=torch.device('cpu')) -> None:
         super().__init__()
         wav_data, _ = lload(path_to_wav, sr=sr, mono=mono)
         t_wav_data = torch.from_numpy(wav_data)
+        song_length = t_wav_data.shape[-1]
 
         if mono:
+            t_wav_data = t_wav_data[:int(song_length * use_part)]
             self.__t_wav_data_uf = t_wav_data.unfold(0, 
                                                      sample_size, 
-                                                     unfolding_step).to(device)
+                                                     unfolding_step).view(-1, 1, sample_size).to(device)
         else:
+            t_wav_data = t_wav_data[:, :int(song_length * use_part)]
             self.__t_wav_data_uf = torch.swapaxes(t_wav_data.unfold(1, 
                                                                     sample_size, 
                                                                     unfolding_step).to(device),
