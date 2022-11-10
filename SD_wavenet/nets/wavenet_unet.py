@@ -21,10 +21,6 @@ class UWUNet_v1(nn.Module):
                  wn_dilation_depth,
                  wn_repeats):
         super().__init__()
-        
-        #down_channels = (64, 128, 256, 512, 1024)
-        #up_channels = (1024, 512, 256, 128, 64)
-        #time_emb_dim = 32
 
         # Time embedding
         self._time_emb = nn.Sequential(

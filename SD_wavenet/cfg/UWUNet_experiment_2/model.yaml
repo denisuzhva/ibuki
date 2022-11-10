@@ -3,7 +3,8 @@ t_max: 10
 
 # Noise scheduler
 distrib_type: uniform
-beta_end: 0.2
+beta_start: 0.
+beta_end: 0.
 
 # De-noiser
 wav_channels: 1

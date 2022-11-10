@@ -46,6 +46,7 @@ if __name__ == '__main__':
     # Forward diffusion: Noise Scheduler
     t_max = model_params['t_max']
     noise_sched = NoiseScheduler(t_max, 
+                                 start=model_params['beta_start'],
                                  end=model_params['beta_end'], 
                                  distrib_type=model_params['distrib_type']).to(device)
     
