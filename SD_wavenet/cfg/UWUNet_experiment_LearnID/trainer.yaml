@@ -1,0 +1,12 @@
+do_train: true
+
+lr: 0.001
+lr_sched_gamma: 0.5
+lr_sched_step: 100
+
+batch_size: 16
+
+losses:
+  l1: 1.
+
+epochs: 800

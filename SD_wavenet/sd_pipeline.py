@@ -1,6 +1,8 @@
 import torch
 
 import os
+import numpy as np
+import pandas as pd
 import yaml
 from datasets import SimpleWavHandler
 from torch.utils.data import DataLoader
@@ -15,7 +17,7 @@ from trainer import train_sd_model
 if __name__ == '__main__':
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    run_name = 'UWUNet_experiment_2'
+    run_name = 'UWUNet_experiment_LearnID'
     #writer = SummaryWriter(f'runs/{run_name}/')
     cfg_path = f'./cfg/{run_name}/'
     
@@ -70,6 +72,27 @@ if __name__ == '__main__':
     opt_checkpoint_path = checkpoint_dir + run_name + '_opt.pth'
     os.makedirs(train_log_dir, exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    # Check if model dump exists
+    if os.path.exists(model_checkpoint_path):
+        print("Models loaded")
+        denoiser_model.load_state_dict(torch.load(model_checkpoint_path), strict=False)
+    
+    # Check if log exists
+    if os.path.exists(train_log_path):
+        print("Log loaded")
+        log_df = pd.read_csv(train_log_path)
+        last_epoch = log_df["epoch"].iloc[-1]
+        min_v_loss = log_df["min_v_loss"].iloc[-1]
+    else:
+        last_epoch = 0
+        min_v_loss = np.Inf
+        
+    # Check if optimizer checkpoint exists
+    if os.path.exists(opt_checkpoint_path):
+        checkpoint = torch.load(opt_checkpoint_path)
+    else:
+        checkpoint = None
 
     if trainer_params['do_train']:
         train_sd_model(
@@ -85,7 +108,9 @@ if __name__ == '__main__':
             device=device,
             log_df_path=train_log_path,
             model_dump_path=model_checkpoint_path,
-            chkpnt_dump_path=opt_checkpoint_path,
+            opt_dump_path=opt_checkpoint_path,
+            min_v_loss=min_v_loss,
+            checkpoint=checkpoint,
         )
         
     #writer.add_graph(denoiser_model, (next(iter(train_dataloader)), t))

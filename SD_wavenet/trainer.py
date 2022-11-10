@@ -45,7 +45,7 @@ def train_sd_model(train_loader, valid_loader,
                    n_epochs, learning_rate, 
                    crit_lambdas, 
                    device, 
-                   log_df_path, model_dump_path, chkpnt_dump_path,
+                   log_df_path, model_dump_path, opt_dump_path,
                    validate_each_n_epoch=5, last_epoch=0, 
                    min_v_loss=np.Inf,
                    checkpoint=None):
@@ -64,7 +64,7 @@ def train_sd_model(train_loader, valid_loader,
         device :                Current device (cuda or cpu)
         log_df_path :           Path to training logs
         model_dump_path :       Path to model dump
-        chkpnt_dump_path :      Path to the optimizer and scheduler checkpoints
+        opt_dump_path :         Path to the optimizer and scheduler checkpoints
         validate_each_n_epoch : An interval between epochs with validation performed
         last_epoch :            Last epoch before current transfer learning
         min_v_loss :            Minimum validation loss among all epochs
@@ -156,11 +156,11 @@ def train_sd_model(train_loader, valid_loader,
                     loss_vals['v'][lm] += valid_losses[lm].cpu().item() / n_valid_batches
 
             if loss_vals['v'][list(crit_lambdas.keys())[0]] < min_v_loss:
-                torch.save(denoiser_model, model_dump_path)
+                torch.save(denoiser_model.state_dict(), model_dump_path)
                 torch.save({
                     optimizer_chkpt_name: optimizer.state_dict(),
                     scheduler_chkpt_name: lr_scheduler.state_dict()
-                }, chkpnt_dump_path)
+                }, opt_dump_path)
                 min_v_loss = loss_vals['v'][list(crit_lambdas.keys())[0]]
 
             d = {"epoch": [epoch], "min_v_loss": [min_v_loss]}
