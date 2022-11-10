@@ -4,7 +4,7 @@ import os
 import yaml
 from datasets import SimpleWavHandler
 from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 
 from nets.noise_sched import NoiseScheduler
 from nets.wavenet_unet import UWUNet_v1
@@ -15,8 +15,8 @@ from trainer import train_sd_model
 if __name__ == '__main__':
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    run_name = 'UWUNet_experiment_1'
-    writer = SummaryWriter(f'runs/{run_name}/')
+    run_name = 'UWUNet_experiment_2'
+    #writer = SummaryWriter(f'runs/{run_name}/')
     cfg_path = f'./cfg/{run_name}/'
     
     with open(cfg_path + 'dataset.yaml') as f:
