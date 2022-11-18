@@ -1,4 +1,0 @@
-sr: 16000
-sample_size: 4096
-train_path: ../datasets/ww_the_deep.wav
-test_path: ../datasets/ww_resurge.wav

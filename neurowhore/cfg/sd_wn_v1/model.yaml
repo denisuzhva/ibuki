@@ -1,0 +1,22 @@
+# Diffuser network
+diffuser: 
+    class: NoiseScheduler
+    reqgrad: False
+    params: 
+        t_max: 200
+        distrib_type: uniform
+        beta_start: 0.0001
+        beta_end: 0.5
+
+# Denoiser network
+denoiser: 
+    class: UWUNet_v1
+    reqgrad: True
+    params: 
+        wav_channels: 1
+        down_channels: [32, 64, 128, 256, 512]
+        up_channels: [512, 256, 128, 64, 32]
+        time_emb_dim: 32
+        wn_dilation_depth: 9
+        wn_repeats: 2
+    
