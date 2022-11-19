@@ -5,7 +5,7 @@ from os.path import exists
 import numpy as np
 import pandas as pd
 import yaml
-from neurowhore.data_processing.datasets import SimpleWavHandler
+from data_processing.datasets import SimpleWavHandler
 from torch.utils.data import DataLoader
 #from torch.utils.tensorboard import SummaryWriter
 
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print('Best available device:', device)
     
-    cfg_path = f'./prototype2_csnet/cfg/'
+    cfg_path = f'./neurogen/cfg/'
     
     # Load general config
     with open(cfg_path + 'general.yaml') as f:
@@ -102,12 +102,14 @@ if __name__ == '__main__':
             min_v_loss = np.Inf
 
         # Train it
+        trainer_params['model_handler']['params']['t_max'] = \
+            all_models_data['diffuser']['params']['t_max']
         if trainer_params['do_train']:
             train_model(
                 train_dataloader,
                 valid_dataloader,
                 models,
-                trainer_params['model_handler'],
+                model_handler_data=trainer_params['model_handler'],
                 n_epochs=trainer_params['epochs'],
                 learning_rate_params=trainer_params['lr_params'],
                 crit_lambdas=trainer_params['losses'],

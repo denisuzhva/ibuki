@@ -1,5 +1,3 @@
-# trainer.py
-
 import os
 import numpy as np
 import pandas as pd
@@ -7,20 +5,32 @@ import time
 import torch
 from torch import nn
 from torch.optim import Adam
-from neurowhore.utils import init_weights_xavier, fft_l1_norm
+from utils import init_weights_xavier, fft_l1_norm
+from utils import wav16_to_onehot
 
 
 
-
-
-def sd_wavenet_handler(models, data, params):
+def sd_wavenet_handler(models, data, params, device):
     batch_size = data.shape[0]
+    data = data.to(device)
     t = torch.randint(0, params['t_max'], (batch_size,), device=data.get_device()).long()
-    noise_sched = models['noise_sched']
-    denoiser = models['denoiser']
+    noise_sched = models['noise_sched'][1]
+    denoiser = models['denoiser'][1]
     data_noised, noise = noise_sched(data, t)
-    pred_noise = denoiser(data_noised, t)   
+    pred_noise = denoiser(data_noised, t)
     return pred_noise, noise
+
+
+def dtf_gen_handler(models, data, params, device):
+    in_seq, target = data
+    in_seq = in_seq.float().to(device)
+    target = target.to(device)
+    n_classes = params['n_classes']
+    dtf_generator = models['transformer'][1]
+    out_seq = dtf_generator(in_seq)
+    out_sample = out_seq[-1]
+    target_oh = wav16_to_onehot(target, n_classes, do_mu=True).float()
+    return out_sample, target_oh
 
 
 def train_model(train_loader, valid_loader, 
@@ -35,7 +45,6 @@ def train_model(train_loader, valid_loader,
                 validate_each_n_epoch=5, last_epoch=0, 
                 min_v_loss=np.Inf,
                 opt_chkp=None):
-
     """
     The trainer function for a compressed sensing network training and validation.
 
@@ -60,24 +69,27 @@ def train_model(train_loader, valid_loader,
     """
 
     n_train_batches = len(train_loader) 
+    print(f"# train batches: {n_train_batches}")
     n_valid_batches = len(valid_loader) 
     
     # Model handlers
     model_handlers_all = {
         'sd_wavenet': sd_wavenet_handler,
+        'dtf_gen': dtf_gen_handler,
     }
     model_handler = model_handlers_all[model_handler_data['name']]
 
     # Loss and optimizer
     crits = {
-        "l2": nn.MSELoss(),
-        "l1": nn.L1Loss(),
-        "l1S": nn.SmoothL1Loss(),
-        "l1norm": fft_l1_norm(),
+        'l2': nn.MSELoss(),
+        'l1': nn.L1Loss(),
+        'l1S': nn.SmoothL1Loss(),
+        'l1norm': fft_l1_norm(),
+        'ce': nn.CrossEntropyLoss(),
     }             
     loss_vals = {
-        "t": {},
-        "v": {}
+        't': {},
+        'v': {}
     }
     for mode in loss_vals.keys():
         for lm in crit_lambdas.keys():
@@ -125,13 +137,16 @@ def train_model(train_loader, valid_loader,
             else:
                 model.eval()
         for batch_idx, data in enumerate(train_loader):
-            data = data.float().to(device)
-            pred_data, data_preproc = model_handler(models, 
-                                                    data,
-                                                    model_handler_data['params'])
+            #data = data.float().to(device)
+            if batch_idx % 100 == 0:
+                print(f"batch # {batch_idx}")
+            pred, target = model_handler(models, 
+                                         data,
+                                         model_handler_data['params'],
+                                         device,)
             train_losses = {}
             for lm in crit_lambdas.keys():
-                train_losses[lm] = crit_lambdas[lm] * crits[lm](data_preproc, pred_data)
+                train_losses[lm] = crit_lambdas[lm] * crits[lm](pred, target)
                 loss_vals['t'][lm] += train_losses[lm].cpu().item() / n_train_batches
 
             optimizer.zero_grad()
@@ -146,13 +161,14 @@ def train_model(train_loader, valid_loader,
             for _, model, _ in models.values():
                 model.eval()
             for batch_idx, data in enumerate(valid_loader):
-                data = data.float().to(device)
-                pred_data, data_preproc = model_handler(models, 
-                                                        data, 
-                                                        model_handler_data['params'])
+                #data = data.float().to(device)
+                pred, target = model_handler(models, 
+                                             data, 
+                                             model_handler_data['params'],
+                                             device,)
                 valid_losses = {}
                 for lm in crit_lambdas.keys():
-                    valid_losses[lm] = crit_lambdas[lm] * crits[lm](data_preproc, pred_data)
+                    valid_losses[lm] = crit_lambdas[lm] * crits[lm](pred, target)
                     loss_vals['v'][lm] += valid_losses[lm].cpu().item() / n_valid_batches
 
             if loss_vals['v'][list(crit_lambdas.keys())[0]] < min_v_loss:

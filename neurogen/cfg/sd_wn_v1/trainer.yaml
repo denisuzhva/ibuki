@@ -1,0 +1,17 @@
+model_handler: 
+    name: sd_wavenet_handler
+    params: 
+        default: null
+do_train: true
+
+lr_params:
+  lr: 0.001
+  sched_gamma: 0.5
+  sched_step: 10
+
+batch_size: 16
+
+losses:
+  l1: 1.
+
+epochs: 800

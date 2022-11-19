@@ -2,7 +2,7 @@ import numpy as np
 import math
 import torch
 from torch import nn
-from neurowhore.nets.utils_dl import activation_func
+from utils import activation_func
 
 
 

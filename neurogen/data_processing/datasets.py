@@ -14,7 +14,8 @@ class SimpleWavHandler(Dataset):
                  sample_size=1024,
                  unfolding_step=512,
                  use_part=1.0,
-                 device=torch.device('cpu')) -> None:
+                 #device=torch.device('cpu'),
+                 ) -> None:
         super().__init__()
         wav_data, _ = lload(path_to_wav, sr=sr, mono=mono, res_type='soxr_qq')
         t_wav_data = torch.from_numpy(wav_data)
@@ -24,12 +25,12 @@ class SimpleWavHandler(Dataset):
             t_wav_data = t_wav_data[:int(song_length * use_part)]
             self._t_wav_data_uf = t_wav_data.unfold(0, 
                                                     sample_size, 
-                                                    unfolding_step).view(-1, 1, sample_size).to(device)
+                                                    unfolding_step).view(-1, 1, sample_size),#.to(device)
         else:
             t_wav_data = t_wav_data[:, :int(song_length * use_part)]
             self._t_wav_data_uf = torch.swapaxes(t_wav_data.unfold(1, 
                                                                    sample_size, 
-                                                                   unfolding_step).to(device),
+                                                                   unfolding_step),#.to(device),
                                                   0, 1)
         data_shape = self._t_wav_data_uf.shape 
         self.__n_samples = data_shape[0]
@@ -51,12 +52,15 @@ class SimpleDilatedWavHandler(Dataset):
                  n_patches=64,
                  dilation_depth=5,
                  pad_wav=False,
-                 use_part=1.) -> None:
+                 use_part=1.,
+                 #device=torch.device('cpu'),
+                 ) -> None:
         super().__init__()
         wav_data, _ = lload(path_to_wav, sr=sr, mono=mono, res_type='soxr_qq')
-        t_wav_data = torch.from_numpy(wav_data)
+        t_wav_data = torch.from_numpy(wav_data)#.to(device)
         song_length = t_wav_data.shape[-1]
         
+        self._sr = sr
         self._patch_size = patch_size
         self._n_patches = n_patches
         self._dil_depth = dilation_depth
@@ -73,9 +77,14 @@ class SimpleDilatedWavHandler(Dataset):
                 self.__n_samples = self._t_wav_data.shape[-1] - self._max_receptive_field - 1
         else:
             raise NotImplementedError("Stereo data not implemented yet :C")
+        
         self._t_wav_data *= 2**15
         self._t_wav_data = self._t_wav_data.type(torch.int16)
         #self._t_wav_data = torch.arange(end = self.__n_samples)
+        
+    def get_context(self):
+        in_seconds = self._max_receptive_field / self._sr
+        return self._max_receptive_field, in_seconds
         
     def __len__(self) -> int:
         return self.__n_samples
@@ -93,4 +102,4 @@ class SimpleDilatedWavHandler(Dataset):
             out_seq[dil_deg, :, :] = recept_selected
         out_target = self._t_wav_data[sample_index + self._max_receptive_field + 1]
         
-        return out_seq, out_target, recept_data
+        return out_seq, out_target#, recept_data

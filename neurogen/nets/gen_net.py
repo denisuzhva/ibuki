@@ -6,7 +6,7 @@ from torch.nn import (
     TransformerDecoder,
     TransformerDecoderLayer,
 )
-from neurogen.utils import (
+from utils import (
     PosEncoding,
 )
 
@@ -70,7 +70,9 @@ class DilatedTMonoSampler(nn.Module):
         """
             x: Tensor, shape [batch_size, dilation_depth, seq_len, embedding_dim]
         """
-        dec_out = x[:, 0, :, :]
+        # Make [dilation_depth, seq_len, batch_size, embedding_dim]
+        x = torch.permute(x, (1, 2, 0, 3)).contiguous() 
+        dec_out = x[0]
         for ddx in range(self._dilation_depth):
             x_d = x[ddx]
             enc_out = self._dilated_encoders[ddx](x_d)

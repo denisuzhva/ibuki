@@ -1,0 +1,17 @@
+model_handler: 
+    name: dtf_gen
+    params:
+        default: null
+do_train: true
+
+lr_params:
+  lr: 0.001
+  sched_gamma: 0.5
+  sched_step: 100
+
+batch_size: 128
+
+losses:
+    ce: 1.
+
+epochs: 1000

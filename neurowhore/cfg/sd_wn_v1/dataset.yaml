@@ -1,5 +1,0 @@
-mono: True
-sr: 16000
-sample_size: 4096
-train_path: ./datasets/wav/ww_the_deep.wav
-valid_path: ./datasets/wav/ww_resurge.wav

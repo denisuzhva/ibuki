@@ -1,6 +1,6 @@
 # Diffuser network
 diffuser: 
-    class: NoiseScheduler
+    name: NoiseScheduler
     reqgrad: False
     params: 
         t_max: 200
@@ -10,7 +10,7 @@ diffuser:
 
 # Denoiser network
 denoiser: 
-    class: UWUNet_v1
+    name: UWUNet_v1
     reqgrad: True
     params: 
         wav_channels: 1

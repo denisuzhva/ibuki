@@ -1,0 +1,14 @@
+# Dilated transformer generator
+transformer: 
+    name: DilatedTMonoSampler
+    reqgrad: True
+    params: 
+        n_q_out: 256
+        d_model: null
+        d_hidden: 256
+        n_heads: 8
+        n_enc_layers: 4
+        n_dec_layers: 4
+        dilation_depth: 5
+        dropout: 0.2
+

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from neurowhore.nets.diff_wavenet_ae import (
+from nets.diff_wavenet_ae import (
     DiffWaveNet, 
     DiffUNetBlock1d, 
     DiffPosEncoding
