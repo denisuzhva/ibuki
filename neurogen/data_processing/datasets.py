@@ -2,6 +2,10 @@ import torch
 import torch.nn.functional as F
 from librosa import load as lload
 from torch.utils.data import Dataset
+from data_processing.dilated_patcher import (
+    dil_patcher_recept_field,
+    dilated_patcher,
+)
 
 
 
@@ -68,7 +72,8 @@ class SimpleDilatedWavHandler(Dataset):
         if mono:
             t_wav_data = t_wav_data[:int(song_length * use_part)]
             max_dil_size = 2**dilation_depth
-            self._max_receptive_field = patch_size * (max_dil_size * (n_patches - 1) + 1)
+            self._max_receptive_field = dil_patcher_recept_field(patch_size, n_patches, dilation_depth)
+            #self._max_receptive_field = patch_size * (max_dil_size * (n_patches - 1) + 1)
             if pad_wav:
                 self._t_wav_data = F.pad(t_wav_data, (self._max_receptive_field, 1), 'constant', 0)
                 self.__n_samples = self._t_wav_data.shape[-1] - 1
@@ -90,16 +95,19 @@ class SimpleDilatedWavHandler(Dataset):
         return self.__n_samples
     
     def __getitem__(self, sample_index):
-        out_seq = torch.zeros((self._dil_depth + 1, # number of dilations + no dilation case
-                               self._n_patches,     # sequence length
-                               self._patch_size,    # patch size (embedding dim?)
-                               ))
-        recept_data = self._t_wav_data[sample_index : sample_index + self._max_receptive_field]
-        recept_unfolded = recept_data.unfold(0, self._patch_size, self._patch_size)
-        for dil_deg in range(self._dil_depth + 1):
-            dil = 2 ** dil_deg
-            recept_selected =  recept_unfolded[::dil, :][-self._n_patches:]
-            out_seq[dil_deg, :, :] = recept_selected
-        out_target = self._t_wav_data[sample_index + self._max_receptive_field + 1]
+        #patched_seq = torch.zeros((self._dil_depth + 1, # number of dilations + no dilation case
+        #                       self._n_patches,     # sequence length
+        #                       self._patch_size,    # patch size (embedding dim?)
+        #                       ))
+        #recept_data = self._t_wav_data[sample_index : sample_index + self._max_receptive_field]
+        #recept_unfolded = recept_data.unfold(0, self._patch_size, self._patch_size)
+        #for dil_deg in range(self._dil_depth + 1):
+        #    dil = 2 ** dil_deg
+        #    recept_selected =  recept_unfolded[::dil, :][-self._n_patches:]
+        #    patched_seq[dil_deg, :, :] = recept_selected
+        patched_seq = dilated_patcher(self._t_wav_data, sample_index,
+                                      self._patch_size, self._n_patches,
+                                      self._dil_depth)
+        target = self._t_wav_data[sample_index + self._max_receptive_field]
         
-        return out_seq, out_target#, recept_data
+        return patched_seq, target#, recept_data

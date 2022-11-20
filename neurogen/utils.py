@@ -68,9 +68,9 @@ def mulraw_inverse(y, quantization_channels=256):
     if isinstance(y, np.ndarray):
         x = np.sign(y) * (np.power(1 + mu, np.abs(y)) - 1) / mu
     elif isinstance(y, (torch.Tensor, torch.LongTensor)):
-        device = x.get_device()
+        device = y.get_device()
         if isinstance(y, torch.LongTensor):
-            x = x.float()
+            y = y.float()
         mu = torch.FloatTensor([mu]).to(device)
         x = torch.sign(y) * (torch.pow(1 + mu, torch.abs(y)) - 1) / mu
     return x 
