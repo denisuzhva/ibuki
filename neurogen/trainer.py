@@ -4,7 +4,7 @@ import pandas as pd
 import time
 import torch
 from torch import nn
-from torch.optim import Adam
+from torch.optim import Adam, SGD
 from utils import init_weights_xavier, fft_l1_norm
 from utils import wav16_to_onehot
 
@@ -23,7 +23,7 @@ def sd_wavenet_handler(models, data, params, device):
 
 def dtf_gen_handler(models, data, params, device):
     in_seq, target = data
-    in_seq = in_seq.float().to(device)
+    in_seq = in_seq.float().to(device) / 2**15
     target = target.to(device)
     n_classes = params['n_classes']
     dtf_generator = models['transformer'][1]
@@ -85,7 +85,7 @@ def train_model(train_loader, valid_loader,
         'l1': nn.L1Loss(),
         'l1S': nn.SmoothL1Loss(),
         'l1norm': fft_l1_norm(),
-        'ce': nn.CrossEntropyLoss(),
+        'ce': nn.CrossEntropyLoss(label_smoothing = 0.1),
     }             
     loss_vals = {
         't': {},
@@ -100,7 +100,7 @@ def train_model(train_loader, valid_loader,
         model_params += list(model.parameters())
         if reqgrad_flag:
             model.apply(init_weights_xavier)
-    optimizer = Adam(model_params, lr=learning_rate_params['lr'])
+    optimizer = Adam(model_params, lr=learning_rate_params['lr'], betas=(0.9, 0.98), eps=1.0e-9)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, 
                                                    step_size=learning_rate_params['sched_step'], 
                                                    gamma=learning_rate_params['sched_gamma'])
@@ -120,7 +120,7 @@ def train_model(train_loader, valid_loader,
         log_header = False
     start_t = time.time() 
     for epoch in range(last_epoch+1, n_epochs+1):
-
+	
         if epoch % validate_each_n_epoch == 0:
             do_eval = True
         else:
@@ -138,8 +138,8 @@ def train_model(train_loader, valid_loader,
                 model.eval()
         for batch_idx, data in enumerate(train_loader):
             #data = data.float().to(device)
-            if batch_idx % 100 == 0:
-                print(f"batch # {batch_idx}")
+            #if batch_idx % 1000 == 0:
+            #    print(f"batch # {batch_idx}")
             pred, target = model_handler(models, 
                                          data,
                                          model_handler_data['params'],
@@ -149,6 +149,7 @@ def train_model(train_loader, valid_loader,
                 train_losses[lm] = crit_lambdas[lm] * crits[lm](pred, target)
                 loss_vals['t'][lm] += train_losses[lm].cpu().item() / n_train_batches
 
+            print(f"epoch: {epoch}, batch: {batch_idx}, train_losses: {train_losses}")
             optimizer.zero_grad()
             train_loss = sum(train_losses.values())
             train_loss.backward()

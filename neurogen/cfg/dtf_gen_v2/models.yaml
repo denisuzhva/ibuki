@@ -6,9 +6,9 @@ transformer:
         n_q_out: 256
         d_model: null
         d_hidden: 1024
-        n_heads: 4
-        n_enc_layers: 3
-        n_dec_layers: 3
+        n_heads: 8
+        n_enc_layers: 4
+        n_dec_layers: 4
         dilation_depth: null
-        dropout: 0.1
+        dropout: 0.2
 
