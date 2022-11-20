@@ -15,4 +15,4 @@ losses:
     ce: 1.
 
 epochs: 500
-validate_each_epoch: 5
+validate_each_epoch: 1

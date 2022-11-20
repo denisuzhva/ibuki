@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import pandas as pd
 import time
@@ -71,6 +72,7 @@ def train_model(train_loader, valid_loader,
     n_train_batches = len(train_loader) 
     print(f"# train batches: {n_train_batches}")
     n_valid_batches = len(valid_loader) 
+    print(f"# validation batches: {n_valid_batches}")
     
     # Model handlers
     model_handlers_all = {
@@ -118,7 +120,8 @@ def train_model(train_loader, valid_loader,
         log_header = True
     else:
         log_header = False
-    start_t = time.time() 
+    start_t_general = time.time() 
+    weak_log_interval = 1000
     for epoch in range(last_epoch+1, n_epochs+1):
 	
         if epoch % validate_each_n_epoch == 0:
@@ -136,6 +139,7 @@ def train_model(train_loader, valid_loader,
                 model.train()
             else:
                 model.eval()
+        start_t_loc = time.time()
         for batch_idx, data in enumerate(train_loader):
             #data = data.float().to(device)
             #if batch_idx % 1000 == 0:
@@ -149,7 +153,10 @@ def train_model(train_loader, valid_loader,
                 train_losses[lm] = crit_lambdas[lm] * crits[lm](pred, target)
                 loss_vals['t'][lm] += train_losses[lm].cpu().item() / n_train_batches
 
-            print(f"epoch: {epoch}, batch: {batch_idx}, train_losses: {train_losses}")
+            if batch_idx % weak_log_interval == 0:
+                ms_per_batch = (time.time() - start_t_loc) * 1000 / weak_log_interval
+                print(f"epoch: {epoch}, batch: {batch_idx}, ms/batch: {ms_per_batch:5.2f}, train_losses: {train_losses}")
+                start_t_loc = time.time()
             optimizer.zero_grad()
             train_loss = sum(train_losses.values())
             train_loss.backward()
@@ -192,7 +199,7 @@ def train_model(train_loader, valid_loader,
             df.to_csv(log_df_path, mode='a', header=log_header, index=False)
             log_header = False
 
-    print("t: ", time.time() - start_t)
+    print("total time: ", time.time() - start_t_general)
 
 
 
