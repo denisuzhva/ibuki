@@ -21,4 +21,4 @@ def dilated_patcher(in_seq, sample_index, patch_size, n_patches, dilation_depth,
         dil = 2 ** dil_deg
         recept_selected =  recept_unfolded[::dil, :][-n_patches:]
         patched_seq[dil_deg, :, :] = recept_selected
-    return patched_seq.to(device)
+    return patched_seq
