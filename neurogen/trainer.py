@@ -6,8 +6,8 @@ import time
 import torch
 from torch import nn
 from torch.optim import Adam, SGD
-from utils import init_weights_xavier, fft_l1_norm
-from utils import wav16_to_onehot
+from utils.nn_utils import init_weights_xavier, fft_l1_norm
+from utils.audio_utils import wav16_to_onehot
 
 
 

@@ -1,7 +1,7 @@
 mono: True
 sr: 16000
 patch_size: 1024
-n_patches: 64
+n_patches: 8
 dilation_depth: 3
 train_use_part: 1.
 valid_use_part: 0.05

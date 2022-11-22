@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 import nets.gen_net
 from trainer import train_model
-from utils import count_parameters
+from utils.nn_utils import count_parameters
 
 
 
