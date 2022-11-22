@@ -2,7 +2,7 @@ import numpy as np
 import math
 import torch
 from torch import nn
-from utils import activation_func
+from utils.nn_utils import activation_func
 
 
 

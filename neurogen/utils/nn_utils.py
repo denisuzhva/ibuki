@@ -1,8 +1,4 @@
-import numpy as np
-import math
 import torch
-import torch.nn.functional as F
-import torchvision
 from torch import nn
 from torch import Tensor
 
@@ -35,47 +31,6 @@ def fft_l1_norm(fft_size=4096):
     return get_norm
 
 
-def simple_quantizer(x, quantization_channels=256):
-    mav = quantization_channels - 1
-    if isinstance(x, np.ndarray):
-        x_q = x * mav
-        x_q = np.around(x_q) / mav
-    elif isinstance(x, (torch.Tensor, torch.LongTensor)):
-        device = x.get_device()
-        if isinstance(x, torch.LongTensor):
-            x = x.float()
-        mav = torch.FloatTensor([mav]).to(device)
-        x_q = x * mav
-        x_q = np.around(x_q) / mav
-    return x_q
-
-    
-def mulaw(x, quantization_channels=256):
-    mu = quantization_channels - 1
-    if isinstance(x, np.ndarray):
-        y = np.sign(x) * np.log1p(mu * np.abs(x)) / np.log1p(mu)
-    elif isinstance(x, (torch.Tensor, torch.LongTensor)):
-        device = x.get_device()
-        if isinstance(x, torch.LongTensor):
-            x = x.float()
-        mu = torch.FloatTensor([mu]).to(device)
-        y = torch.sign(x) * torch.log1p(mu * torch.abs(x)) / torch.log1p(mu)
-    return y
-
-
-def mulraw_inverse(y, quantization_channels=256):
-    mu = quantization_channels - 1
-    if isinstance(y, np.ndarray):
-        x = np.sign(y) * (np.power(1 + mu, np.abs(y)) - 1) / mu
-    elif isinstance(y, (torch.Tensor, torch.LongTensor)):
-        device = y.get_device()
-        if isinstance(y, torch.LongTensor):
-            y = y.float()
-        mu = torch.FloatTensor([mu]).to(device)
-        x = torch.sign(y) * (torch.pow(1 + mu, torch.abs(y)) - 1) / mu
-    return x 
-
-    
 def activation_func(activation):
     return nn.ModuleDict([
         ['relu', nn.ReLU(inplace=True)],
@@ -128,43 +83,10 @@ def calc_convT2d_shape(hw_in, kernel_size, stride=1, padding=0, output_padding=0
     return hw_out
 
 
-def denormalize_makegrid(im, norm_mean, norm_std, max_norm=False):
-    """
-    Denormalize images from given normalization parameters 
-    as in torchvision.transforms.Normalize;
-    make a grid of the batch of images.
-
-    Args:
-        im:         Image of type torch.FloatTensor or torch.cuda.FloatTensor
-        norm_mean:  Mean of image normalization transform
-        norm_std:   Standard deviation of image normalization transform
-        max_norm:   Normalize by maximum value
-    """
-    im = im.mul_(norm_std.view(1, -1, 1, 1)).add_(norm_mean.view(1, -1, 1, 1))
-    im = torchvision.utils.make_grid(im)
-    im = im.cpu().numpy()
-    im = im.transpose((1, 2, 0))
-    if max_norm:
-        im = im / im.max()
-
-    return im
-
-        
 def generate_square_subsequent_mask(sz: int) -> Tensor:
     """Generates an upper-triangular matrix of -inf, with zeros on diag."""
     return torch.triu(torch.ones(sz, sz) * float('-inf'), diagonal=1)
     
-
-def wav16_to_onehot(target_sample_batch, n_classes=256, do_mu=True):
-    target_pmone = target_sample_batch.type(torch.float32) / 2**15
-    if do_mu:
-        target_pmone = mulaw(target_pmone, 
-                             quantization_channels=n_classes)
-    target_uint = torch.round((target_pmone + 1) * (n_classes-1) / 2).long()
-    target_onehot = F.one_hot(target_uint, n_classes)
-    return target_onehot
-    
     
 def count_parameters(model): 
-    return sum(p.numel() for p in model.parameters() if p.requires_grad) 
-    
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)

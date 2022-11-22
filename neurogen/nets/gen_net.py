@@ -8,6 +8,7 @@ from torch.nn import (
     TransformerDecoder,
     TransformerDecoderLayer,
 )
+from utils.nn_utils import generate_square_subsequent_mask
 
 
     
@@ -49,6 +50,7 @@ class DilatedTMonoSampler(nn.Module):
         n_dec_layers = params['n_dec_layers']
         dilation_depth = params['dilation_depth']
         dropout = params['dropout']
+        self._gen_mask = params['gen_mask']
         
         self._d_model = d_model
         self._dilation_depth = dilation_depth + 1 # +initial with no dilation
@@ -95,10 +97,14 @@ class DilatedTMonoSampler(nn.Module):
         # Make [dilation_depth, seq_len, batch_size, embedding_dim]
         x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
         dec_out = x[0]
+        if self._gen_mask:
+            enc_mask = generate_square_subsequent_mask(x.shape[1])
+        else:
+            enc_out = None
         for ddx in range(self._dilation_depth):
             x_d = x[ddx]
             x_d_pos = self._pos_encoder(x_d * math.sqrt(self._d_model))
-            enc_out = self._dilated_encoders[ddx](x_d_pos)
+            enc_out = self._dilated_encoders[ddx](x_d_pos, enc_mask)
             if ddx == 0:
                 dec_out = self._dilated_decoders[ddx](enc_out, enc_out)
             else:
