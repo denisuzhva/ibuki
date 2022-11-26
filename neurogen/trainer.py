@@ -6,7 +6,7 @@ import time
 import torch
 from torch import nn
 from torch.optim import Adam, SGD
-from utils.nn_utils import init_weights_xavier, fft_l1_norm
+from utils.nn_utils import init_weights_xavier, fft_l1_norm, l1_norm_reg
 from utils.audio_utils import wav16_to_onehot
 
 
@@ -32,6 +32,16 @@ def dtf_gen_handler(models, data, params, device):
     out_sample = out_seq[-1]
     target_oh = wav16_to_onehot(target, n_classes, do_mu=True).float()
     return out_sample, target_oh
+
+
+def dtfmel_gen_handler(models, data, params, device):
+    in_seq, target = data
+    in_seq = in_seq.float().to(device)
+    target = target.to(device)
+    dtf_generator = models['transformer'][1]
+    out_seq = dtf_generator(in_seq)
+    out_sample = out_seq[-1]
+    return out_sample, target
 
 
 def train_model(train_loader, valid_loader, 
@@ -78,6 +88,7 @@ def train_model(train_loader, valid_loader,
     model_handlers_all = {
         'sd_wavenet': sd_wavenet_handler,
         'dtf_gen': dtf_gen_handler,
+        'dtfmel_gen': dtfmel_gen_handler,
     }
     model_handler = model_handlers_all[model_handler_data['name']]
 
@@ -86,7 +97,8 @@ def train_model(train_loader, valid_loader,
         'l2': nn.MSELoss(),
         'l1': nn.L1Loss(),
         'l1S': nn.SmoothL1Loss(),
-        'l1norm': fft_l1_norm(),
+        'fft_l1_norm': fft_l1_norm(),
+        'l1_reg': l1_norm_reg(),
         'ce': nn.CrossEntropyLoss(label_smoothing = 0.1),
     }             
     loss_vals = {

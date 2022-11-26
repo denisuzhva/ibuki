@@ -5,9 +5,9 @@ from os.path import exists
 import numpy as np
 import pandas as pd
 import yaml
-from data_processing.datasets import SimpleDilatedWavHandler
 from torch.utils.data import DataLoader
 
+import data_processing.datasets
 import nets.gen_net
 from trainer import train_model
 from utils.nn_utils import count_parameters
@@ -37,29 +37,15 @@ if __name__ == '__main__':
             trainer_params = yaml.safe_load(f)
             
         # Load data
-        mono = dataset_params['mono']
-        sr = dataset_params['sr']
-        patch_size = dataset_params['patch_size']
-        n_patches = dataset_params['n_patches']
-        dilation_depth = dataset_params['dilation_depth']
-        train_use_part = dataset_params['train_use_part']
-        valid_use_part = dataset_params['valid_use_part']
-        train_path = dataset_params['train_path']
-        valid_path = dataset_params['valid_path']
-        train_dataset = SimpleDilatedWavHandler(train_path, sr, 
-                                                mono=mono,
-                                                patch_size=patch_size,
-                                                n_patches=n_patches,
-                                                dilation_depth=dilation_depth,
-                                                use_part=train_use_part)
-        valid_dataset = SimpleDilatedWavHandler(valid_path, sr, 
-                                                mono=mono,
-                                                patch_size=patch_size,
-                                                n_patches=n_patches,
-                                                dilation_depth=dilation_depth,
-                                                use_part=valid_use_part)
-        _, context_size = train_dataset.get_context()
-        print(f"WAV data context {context_size} sec at {sr} kHz")
+        dataset_name = dataset_params['name']
+        train_params = dataset_params['train']
+        sr = train_params['sr']
+        valid_params = dataset_params['valid']
+        dataset_class = getattr(data_processing.datasets, dataset_name)
+        train_dataset = dataset_class(train_params)
+        valid_dataset = dataset_class(valid_params)
+        _, context_size = train_dataset.get_context_size()
+        print(f"Audio data context {context_size} sec at {sr} kHz")
         
         # Define the models
         models = {} 
@@ -69,9 +55,9 @@ if __name__ == '__main__':
             mname = model_data['name']
             reqgrad_flag = model_data['reqgrad']
             if not model_data['params']['d_model']:
-                model_data['params']['d_model'] = patch_size
+                model_data['params']['d_model'] = train_params['sample_size']
             if not model_data['params']['dilation_depth']:
-                model_data['params']['dilation_depth'] = dilation_depth
+                model_data['params']['dilation_depth'] = train_params['dilation_depth']
             model_class = getattr(nets.gen_net, mname)
             model = model_class(model_data['params'],)
             model.to(device)
@@ -117,8 +103,6 @@ if __name__ == '__main__':
             min_v_loss = np.Inf
 
         # Train it
-        trainer_params['model_handler']['params']['n_classes'] = \
-            all_models_data['transformer']['params']['n_q_out']
         if trainer_params['do_train']:
             train_model(
                 train_dataloader,
