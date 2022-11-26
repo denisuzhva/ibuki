@@ -8,7 +8,7 @@ from torch.nn import (
     TransformerDecoder,
     TransformerDecoderLayer,
 )
-from utils.nn_utils import generate_square_subsequent_mask
+from utils.nn_utils import generate_square_subsequent_mask, activation_func
 
 
     
@@ -33,6 +33,10 @@ class PosEncoding(nn.Module):
         x = x + self.pe[:x.size(0)]
         return self.dropout(x)
 
+
+########################
+# RAW AUDIO PROCESSORS #
+########################
 
 class DilatedTMonoSampler(nn.Module):
     
@@ -96,11 +100,12 @@ class DilatedTMonoSampler(nn.Module):
         """
         # Make [dilation_depth, seq_len, batch_size, embedding_dim]
         x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
+        device = x.get_device()
         dec_out = x[0]
         if self._gen_mask:
-            enc_mask = generate_square_subsequent_mask(x.shape[1])
+            enc_mask = generate_square_subsequent_mask(x.shape[1]).to(device)
         else:
-            enc_out = None
+            enc_mask = None
         for ddx in range(self._dilation_depth):
             x_d = x[ddx]
             x_d_pos = self._pos_encoder(x_d * math.sqrt(self._d_model))
@@ -166,3 +171,65 @@ class SimpleTMonoSampler(nn.Module):
         return fc_out
 
         
+######################################
+# SPECTROGRAM (MEL) AUDIO PROCESSORS #
+######################################
+
+class SimpleTMonoMeler(nn.Module):
+
+    def __init__(self,
+                 params, 
+                 ) -> None:
+        super().__init__()
+        
+        # Unpack model parameters
+        d_model = params['d_model']
+        d_hidden = params['d_hidden']
+        n_heads = params['n_heads']
+        n_tformer_layers = params['n_tf_layers']
+        n_last_fc_layers = params['n_fc_layers']
+        dropout = params['dropout']
+        self._gen_mask = params['gen_mask']
+        
+        self._d_model = d_model
+
+        # Define positional encoder
+        self._pos_encoder = PosEncoding(d_model, dropout)
+        
+        # Define encoders
+        enc_layer = TransformerEncoderLayer(d_model, 
+                                            n_heads, 
+                                            d_hidden,
+                                            dropout,)
+        self._encoder = TransformerEncoder(enc_layer, n_tformer_layers)
+        
+        # Last layers
+        self._last_fc = nn.Sequential(*[nn.Linear(d_model, d_model) for _
+                                        in range(n_last_fc_layers)])
+        self._sigmoid = activation_func('sigmoid')
+        
+        # Init weights
+        #self._init_weights()  
+        
+    def _init_weights(self) -> None:
+        initrange = 0.1
+        self._last_fc.bias.data.zero_()
+        self._last_fc.weight.data.uniform_(-initrange, initrange)
+        
+    def forward(self, x):
+        """
+            x: Tensor, shape [batch_size, dilation_depth, seq_len, embedding_dim]
+        """
+        # Make [dilation_depth, seq_len, batch_size, embedding_dim]
+        x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
+        device = x.get_device()
+        if self._gen_mask:
+            enc_mask = generate_square_subsequent_mask(x.shape[1]).to(device)
+        else:
+            enc_mask = None
+        x_pos = self._pos_encoder(x[0])
+        enc_out = self._encoder(x_pos, enc_mask)
+        fc_out = self._last_fc(enc_out)
+        sigm_out = self._sigmoid(fc_out)
+        return sigm_out
+

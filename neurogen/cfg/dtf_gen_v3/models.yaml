@@ -11,4 +11,5 @@ transformer:
         n_dec_layers: 3
         dilation_depth: null
         dropout: 0.2
+        gen_mask: True
 

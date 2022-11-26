@@ -1,93 +1,93 @@
-import torch
+import torch as t
 import torch.nn.functional as F
-from librosa import load as lload
+import torchaudio as ta
+#from librosa import load as lload
 from torch.utils.data import Dataset
-from data_processing.dilated_patcher import (
-    dil_patcher_recept_field,
-    dilated_patcher,
+from data_processing.dilated_sampler import (
+    dil_sampler_recept_field,
+    dilated_sampler_wav,
+    dilated_sampler_sg,
 )
 
 
 
 class SimpleWavHandler(Dataset):
 
-    def __init__(self, 
-                 path_to_wav='',
-                 sr=16000,
-                 mono=True,
-                 sample_size=1024,
-                 unfolding_step=512,
-                 use_part=1.0,
-                 #device=torch.device('cpu'),
-                 ) -> None:
+    def __init__(self, params,) -> None:
         super().__init__()
-        wav_data, _ = lload(path_to_wav, sr=sr, mono=mono, res_type='soxr_qq')
-        t_wav_data = torch.from_numpy(wav_data)
-        song_length = t_wav_data.shape[-1]
+        
+        path_to_wav = params['path_to_wav']
+        mono = params['mono']
+        use_part = params['use_part']
+        
+        sr = params['sr']
+        sample_size = params['sample_size'] 
+        unfolding_step = params['uf_step']
+        
+        wav_data, sr_init = ta.load(path_to_wav)
+        song_length = wav_data.shape[-1]
+        resampler = ta.transforms.Resample(sr_init, sr)
+        wav_data = resampler(wav_data)
 
         if mono:
-            t_wav_data = t_wav_data[:int(song_length * use_part)]
-            self._t_wav_data_uf = t_wav_data.unfold(0, 
-                                                    sample_size, 
-                                                    unfolding_step).view(-1, 1, sample_size),#.to(device)
+            wav_data = wav_data[:int(song_length * use_part)]
+            self._wav_data_uf = wav_data.unfold(0, 
+                                                sample_size, 
+                                                unfolding_step).view(-1, 1, sample_size),#.to(device)
         else:
-            t_wav_data = t_wav_data[:, :int(song_length * use_part)]
-            self._t_wav_data_uf = torch.swapaxes(t_wav_data.unfold(1, 
-                                                                   sample_size, 
-                                                                   unfolding_step),#.to(device),
-                                                  0, 1)
-        data_shape = self._t_wav_data_uf.shape 
+            wav_data = wav_data[:, :int(song_length * use_part)]
+            self._wav_data_uf = t.swapaxes(wav_data.unfold(1, 
+                                                         sample_size, 
+                                                         unfolding_step),#.to(device),
+                                           0, 1)
+        data_shape = self._wav_data_uf.shape 
         self.__n_samples = data_shape[0]
     
     def __len__(self) -> int:
         return self.__n_samples
     
     def __getitem__(self, index):
-        return self._t_wav_data_uf[index]
+        return self._wav_data_uf[index]
 
         
 class SimpleDilatedWavHandler(Dataset):
     
-    def __init__(self,
-                 path_to_wav = '',
-                 sr=16000,
-                 mono=True,
-                 patch_size=64,
-                 n_patches=64,
-                 dilation_depth=5,
-                 pad_wav=False,
-                 use_part=1.,
-                 #device=torch.device('cpu'),
-                 ) -> None:
+    def __init__(self, params,) -> None:
         super().__init__()
-        wav_data, _ = lload(path_to_wav, sr=sr, mono=mono, res_type='soxr_qq')
-        t_wav_data = torch.from_numpy(wav_data)#.to(device)
-        song_length = t_wav_data.shape[-1]
         
-        self._sr = sr
-        self._patch_size = patch_size
-        self._n_patches = n_patches
-        self._dil_depth = dilation_depth
-
+        path_to_wav = params['path_to_wav']
+        mono = params['mono']
+        pad_seq = params['pad_seq']
+        use_part = params['use_part']
+        
+        self._sr = params['sr']
+        self._patch_size = params['sample_size'] 
+        self._n_patches = params['seq_len']
+        self._dil_depth = params['dilation_depth']
+        
+        wav_data, sr_init = ta.load(path_to_wav)
+        song_length = wav_data.shape[-1]
+        resampler = ta.transforms.Resample(sr_init, self._sr)
+        wav_data = resampler(wav_data)
+       
         if mono:
-            t_wav_data = t_wav_data[:int(song_length * use_part)]
-            max_dil_size = 2**dilation_depth
-            self._max_receptive_field = dil_patcher_recept_field(patch_size, n_patches, dilation_depth)
-            #self._max_receptive_field = patch_size * (max_dil_size * (n_patches - 1) + 1)
-            if pad_wav:
-                self._t_wav_data = F.pad(t_wav_data, (self._max_receptive_field, 1), 'constant', 0)
-                self.__n_samples = self._t_wav_data.shape[-1] - 1
+            wav_data = wav_data[:int(song_length * use_part)]
+            self._max_receptive_field = dil_sampler_recept_field(self._patch_size, 
+                                                                 self._n_patches, 
+                                                                 self._dil_depth)
+            if pad_seq:
+                self._wav_data = F.pad(wav_data, (self._max_receptive_field, 1), 'constant', 0)
+                self.__n_samples = self._wav_data.shape[-1] - 1
             else:
-                self._t_wav_data = F.pad(t_wav_data, (0, 1), 'constant', 0)
-                self.__n_samples = self._t_wav_data.shape[-1] - self._max_receptive_field - 1
+                self._wav_data = F.pad(wav_data, (0, 1), 'constant', 0)
+                self.__n_samples = self._wav_data.shape[-1] - self._max_receptive_field - 1
         else:
             raise NotImplementedError("Stereo data not implemented yet :C")
         
-        self._t_wav_data *= 2**15
-        self._t_wav_data = self._t_wav_data.type(torch.int16)
-        #self._t_wav_data = torch.arange(end = self.__n_samples)
+        self._wav_data *= 2**15 # to 16 bit
+        self._wav_data = self._wav_data.type(t.int16)
         
-    def get_context(self):
+    def get_context_size(self):
         in_seconds = self._max_receptive_field / self._sr
         return self._max_receptive_field, in_seconds
         
@@ -95,19 +95,72 @@ class SimpleDilatedWavHandler(Dataset):
         return self.__n_samples
     
     def __getitem__(self, sample_index):
-        #patched_seq = torch.zeros((self._dil_depth + 1, # number of dilations + no dilation case
-        #                       self._n_patches,     # sequence length
-        #                       self._patch_size,    # patch size (embedding dim?)
-        #                       ))
-        #recept_data = self._t_wav_data[sample_index : sample_index + self._max_receptive_field]
-        #recept_unfolded = recept_data.unfold(0, self._patch_size, self._patch_size)
-        #for dil_deg in range(self._dil_depth + 1):
-        #    dil = 2 ** dil_deg
-        #    recept_selected =  recept_unfolded[::dil, :][-self._n_patches:]
-        #    patched_seq[dil_deg, :, :] = recept_selected
-        patched_seq = dilated_patcher(self._t_wav_data, sample_index,
-                                      self._patch_size, self._n_patches,
-                                      self._dil_depth)
-        target = self._t_wav_data[sample_index + self._max_receptive_field]
+        patched_seq = dilated_sampler_wav(self._wav_data, sample_index,
+                                          self._patch_size, self._n_patches,
+                                          self._dil_depth)
+        target = self._wav_data[sample_index + self._max_receptive_field]
         
-        return patched_seq, target#, recept_data
+        return patched_seq, target#, recepdata
+
+
+class SimpleDilatedMelHandler(Dataset):
+    
+    def __init__(self, params,) -> None:
+        super().__init__()
+        
+        path_to_wav = params['path_to_wav']
+        mono = params['mono']
+        pad_seq = params['pad_seq']
+        use_part = params['use_part']
+        n_fft = params['n_fft']
+        
+        self._sr = params['sr']
+        self._mel_size = params['sample_size'] 
+        self._seq_len = params['seq_len']
+        self._dil_depth = params['dilation_depth']
+        self._hop_size = n_fft//2
+        
+        wav_data, sr_init = ta.load(path_to_wav)
+        song_length = wav_data.shape[-1]
+        resampler = ta.transforms.Resample(sr_init, self._sr)
+        mel_transform = ta.transforms.MelSpectrogram(self._sr, 
+                                                     n_fft, 
+                                                     hop_length=self._hop_size,
+                                                     n_mels=self._mel_size)
+        wav_data = resampler(wav_data)
+
+        if mono:
+            wav_data = self._to_mono(wav_data)
+            wav_data = wav_data[:int(song_length * use_part)]
+            self._max_receptive_field = dil_sampler_recept_field(1, self._seq_len, self._dil_depth)
+            mel_data = mel_transform(wav_data).T
+            if pad_seq:
+                self._mel_data = F.pad(mel_data, (0, 0, self._max_receptive_field, 1), 'constant', 0)
+                self.__n_samples = self._wav_data.shape[0] - 1
+            else:
+                self._mel_data = F.pad(mel_data, (0, 0, 0, 1), 'constant', 0)
+                self.__n_samples = self._mel_data.shape[0] - self._max_receptive_field - 1
+        else:
+            raise NotImplementedError("Stereo data not implemented yet :C")
+        self._mel_data = 20 * t.log(self._mel_data + 1)
+        self._mel_data /= self._mel_data.max()
+        
+        
+    def _to_mono(self, wav_data, keepdim=False):
+        return t.mean(wav_data, dim=0, keepdim=keepdim)
+        
+    def get_context_size(self):
+        in_seconds = self._hop_size * self._max_receptive_field / self._sr
+        return self._max_receptive_field, in_seconds
+        
+    def __len__(self) -> int:
+        return self.__n_samples
+    
+    def __getitem__(self, sample_index):
+        dilated_mel = dilated_sampler_sg(self._mel_data, sample_index,
+                                         self._mel_size, self._seq_len,
+                                         self._dil_depth,
+                                         self._max_receptive_field)
+        target = self._mel_data[sample_index + self._max_receptive_field]
+        
+        return dilated_mel, target#, recept_data

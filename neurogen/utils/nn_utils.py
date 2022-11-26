@@ -1,6 +1,7 @@
-import torch
+import torch as t
 from torch import nn
 from torch import Tensor
+import torch.nn.functional as F
 
 
 
@@ -19,14 +20,24 @@ def init_weights_kaiming(m):
 
 
 def fft_l1_norm(fft_size=4096):
-    def get_norm(data, rec_data):
-        l = data.shape[-1]
+    def get_norm(pred_data, target_data):
+        l = pred_data.shape[-1]
         pad_size = fft_size - l
         pad_left = pad_size // 2
         pad_right = pad_size - pad_left
-        data_padded = nn.functional.pad(data, (pad_left, pad_right))
-        data_fft = torch.abs(torch.fft.fft(data_padded))
-        norm_value = nn.functional.smooth_l1_loss(data_fft, torch.zeros_like(data_fft).to(data_fft.device))
+        pred_data_padded = F.pad(pred_data, (pad_left, pad_right))
+        pred_data_fft = t.abs(t.fft.fft(pred_data_padded))
+        norm_value = F.smooth_l1_loss(pred_data_fft, 
+                                      t.zeros_like(pred_data_fft).to(pred_data_fft.get_device()))
+        return norm_value
+    return get_norm
+
+
+def l1_norm_reg():
+    def get_norm(pred_data, target_data):
+        device = target_data.get_device()
+        targ_zeros = t.zeros_like(target_data).to(device)
+        norm_value = F.smooth_l1_loss(pred_data, targ_zeros)
         return norm_value
     return get_norm
 
@@ -85,7 +96,7 @@ def calc_convT2d_shape(hw_in, kernel_size, stride=1, padding=0, output_padding=0
 
 def generate_square_subsequent_mask(sz: int) -> Tensor:
     """Generates an upper-triangular matrix of -inf, with zeros on diag."""
-    return torch.triu(torch.ones(sz, sz) * float('-inf'), diagonal=1)
+    return t.triu(t.ones(sz, sz) * float('-inf'), diagonal=1)
     
     
 def count_parameters(model): 

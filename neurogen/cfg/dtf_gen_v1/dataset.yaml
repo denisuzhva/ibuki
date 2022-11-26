@@ -1,9 +1,0 @@
-mono: True
-sr: 16000
-patch_size: 32
-n_patches: 128
-dilation_depth: 5
-train_use_part: 0.1
-valid_use_part: 0.05
-train_path: ./datasets/wav/wwolves/ww_the_deep.wav
-valid_path: ./datasets/wav/wwolves/ww_resurge.wav
