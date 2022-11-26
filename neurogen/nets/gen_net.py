@@ -96,9 +96,10 @@ class DilatedTMonoSampler(nn.Module):
         """
         # Make [dilation_depth, seq_len, batch_size, embedding_dim]
         x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
+        x_device = x.get_device()	
         dec_out = x[0]
         if self._gen_mask:
-            enc_mask = generate_square_subsequent_mask(x.shape[1])
+            enc_mask = generate_square_subsequent_mask(x.shape[1]).to(x_device)
         else:
             enc_out = None
         for ddx in range(self._dilation_depth):

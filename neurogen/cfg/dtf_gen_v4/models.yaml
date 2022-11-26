@@ -6,10 +6,10 @@ transformer:
         n_q_out: 256
         d_model: null
         d_hidden: 1024
-        n_heads: 16
+        n_heads: 8
         n_enc_layers: 3
         n_dec_layers: 3
         dilation_depth: null
-        dropout: 0.2
+        dropout: 0.4
         gen_mask: True
 
