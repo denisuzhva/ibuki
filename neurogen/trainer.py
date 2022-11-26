@@ -167,7 +167,7 @@ def train_model(train_loader, valid_loader,
 
             if batch_idx % weak_log_interval == 0:
                 ms_per_batch = (time.time() - start_t_loc) * 1000 / weak_log_interval
-                print(f"epoch: {epoch}, batch: {batch_idx}, ms/batch: {ms_per_batch:5.2f}, train_losses: {train_losses}")
+                #print(f"epoch: {epoch}, batch: {batch_idx}, ms/batch: {ms_per_batch:5.2f}, train_losses: {train_losses}")
                 start_t_loc = time.time()
             optimizer.zero_grad()
             train_loss = sum(train_losses.values())

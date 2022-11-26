@@ -100,9 +100,10 @@ class DilatedTMonoSampler(nn.Module):
         """
         # Make [dilation_depth, seq_len, batch_size, embedding_dim]
         x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
+        device = x.get_device()
         dec_out = x[0]
         if self._gen_mask:
-            enc_mask = generate_square_subsequent_mask(x.shape[1])
+            enc_mask = generate_square_subsequent_mask(x.shape[1]).to(device)
         else:
             enc_mask = None
         for ddx in range(self._dilation_depth):
@@ -132,6 +133,7 @@ class SimpleTMonoSampler(nn.Module):
         n_heads = params['n_heads']
         n_layers = params['n_layers']
         dropout = params['dropout']
+        self._gen_mask = params['gen_mask']
         
         self._d_model = d_model
 
@@ -163,8 +165,13 @@ class SimpleTMonoSampler(nn.Module):
         """
         # Make [dilation_depth, seq_len, batch_size, embedding_dim]
         x = torch.permute(x, (1, 2, 0, 3))#.contiguous() 
+        device = x.get_device()
         x_pos = self._pos_encoder(x[0] * math.sqrt(self._d_model))
-        enc_out = self._encoder(x_pos)
+        if self._gen_mask:
+            enc_mask = generate_square_subsequent_mask(x.shape[1]).to(device)
+        else:
+            enc_mask = None
+        enc_out = self._encoder(x_pos, enc_mask)
         fc_out = self._last_fc(enc_out)
         sm_out = self._softmax(fc_out)
         return fc_out

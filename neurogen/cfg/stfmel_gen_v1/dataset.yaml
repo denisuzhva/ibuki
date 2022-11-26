@@ -5,17 +5,18 @@ train:
     sample_size: 80
     n_fft: 512
     seq_len: 128
-    dilation_depth: 1
+    dilation_depth: 0
     pad_seq: False
     use_part: 1.
-    path_to_wav: ./datasets/wav/wwolves/ww_the_deep.wav
+    #path_to_wav: ./datasets/wav/wwolves/ww_the_deep.wav
+    path_to_wav: ./datasets/wav/wwolves/ww_set2.wav
 valid:
     mono: True
     sr: 16000
     sample_size: 80
     n_fft: 512
     seq_len: 128
-    dilation_depth: 1
+    dilation_depth: 0
     pad_seq: False
     use_part: 0.05
     path_to_wav: ./datasets/wav/wwolves/ww_resurge.wav

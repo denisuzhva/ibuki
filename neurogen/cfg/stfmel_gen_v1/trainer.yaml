@@ -5,14 +5,15 @@ model_handler:
 do_train: true
 
 lr_params:
-  lr: 0.001
-  sched_gamma: 0.96
-  sched_step: 1
+  lr: 0.0001
+  sched_gamma: 0.5
+  sched_step: 100
 
 batch_size: 32
 
 losses:
     l2: 1.
+    l1_reg: 0.02
 
 epochs: 500
 validate_each_epoch: 1

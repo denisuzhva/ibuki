@@ -4,11 +4,11 @@ transformer:
     reqgrad: True
     params: 
         d_model: null
-        d_hidden: 2048
-        n_heads: 16
-        n_tf_layers: 8
-        n_fc_layers: 4
+        d_hidden: 1024
+        n_heads: 8
+        n_tf_layers: 4
+        n_fc_layers: 2
         dilation_depth: null
-        dropout: 0.3
+        dropout: 0.5
         gen_mask: True
 
